@@ -1,0 +1,17 @@
+# Web Server
+fastapi
+uvicorn[standard]
+
+# Environment Variables
+python-dotenv
+
+# YouTube Transcript Fetching
+youtube-transcript-api
+
+# LangChain Core & Components
+langchain
+langchain-google-genai
+langchain-community
+
+# Vector Store (CPU version)
+faiss-cpu
