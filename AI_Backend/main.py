@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from pathlib import Path
-from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -25,20 +25,87 @@ if not GEMINI_API_KEY:
 else:
     print(f"GEMINI_API_KEY loaded successfully, starting with: {GEMINI_API_KEY[:4]}...")
 
+# def get_youtube_transcript(video_id: str) -> str | None:
+#     print(f"Fetching transcript for video ID: {video_id}...")
+#     try:
+#         api = YouTubeTranscriptApi()
+#         transcript_snippets = api.fetch(video_id, languages=['en'])
+#         transcript_text = " ".join(snippet.text for snippet in transcript_snippets)
+#         print("Transcript fetched successfully.")
+#         return transcript_text
+#     except TranscriptsDisabled:
+#         print(f"Transcripts are disabled for video: {video_id}")
+#         return None
+#     except Exception as e:
+#         print(f"An error occurred while fetching transcript: {e}")
+#         return None
+
+
+
+
+
 def get_youtube_transcript(video_id: str) -> str | None:
+    """
+    Fetches the transcript for a given YouTube video ID.
+    Tries manual/generated 'en' first. If that fails, attempts to
+    translate an existing transcript into English.
+    """
     print(f"Fetching transcript for video ID: {video_id}...")
+    api = YouTubeTranscriptApi()
+    
     try:
-        api = YouTubeTranscriptApi()
+        # 1. Try fetching English directly
+        print("Attempting to fetch direct English transcript...")
         transcript_snippets = api.fetch(video_id, languages=['en'])
         transcript_text = " ".join(snippet.text for snippet in transcript_snippets)
-        print("Transcript fetched successfully.")
+        print("Direct English transcript fetched successfully.")
         return transcript_text
+        
+    except NoTranscriptFound as e:
+        print(f"Direct English transcript not found: {e}. Attempting translation...")
+        try:
+            # 2. If direct 'en' fails, list available transcripts
+            transcript_list = api.list(video_id)
+            
+            # --- THIS IS THE FIX ---
+            # Create a list of all available language codes found
+            available_langs = [t.language_code for t in transcript_list]
+            if not available_langs:
+                 print("No transcripts available in any language.")
+                 return None
+
+            print(f"Available language codes: {available_langs}")
+
+            # 3. Find the 'best' transcript among the available ones
+            # find_transcript prefers manual over generated automatically
+            transcript_to_translate = transcript_list.find_transcript(available_langs)
+            print(f"Selected transcript in '{transcript_to_translate.language}' to translate.")
+
+            # 4. Translate it to English
+            print("Translating transcript to English...")
+            translated_snippets = transcript_to_translate.translate('en').fetch()
+            transcript_text = " ".join(snippet.text for snippet in translated_snippets)
+            print("Transcript translated to English successfully.")
+            return transcript_text
+            # --- END FIX ---
+                
+        except TranscriptsDisabled:
+             print(f"Transcripts are disabled for video (during translation attempt): {video_id}")
+             return None
+        except Exception as e_trans:
+             print(f"An error occurred during translation attempt: {e_trans}")
+             return None
+             
     except TranscriptsDisabled:
-        print(f"Transcripts are disabled for video: {video_id}")
+        print(f"Transcripts are disabled for video (initial fetch): {video_id}")
         return None
-    except Exception as e:
-        print(f"An error occurred while fetching transcript: {e}")
+    except Exception as e_main:
+        print(f"An unexpected error occurred: {e_main}")
         return None
+
+
+
+
 
 def create_rag_chain(video_id: str):
     transcript = get_youtube_transcript(video_id)
