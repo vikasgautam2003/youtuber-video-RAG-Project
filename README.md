@@ -21,7 +21,7 @@ VidQuery bridges the gap between passive video consumption and active informatio
 It utilizes a Retrieval-Augmented Generation (RAG) pipeline: fetching the transcript, splitting it into searchable chunks, embedding these chunks into a vector store (FAISS), retrieving the most relevant chunks based on the user's query, and finally, generating a factual answer using a powerful language model guided by the retrieved context.
 
 
-`![Project Screenshot](/Frontend/public/videq.png)`
+![Project Screenshot](Frontend/public/vidq.png)
 
 ---
 
