@@ -12,6 +12,7 @@ youtube-transcript-api
 langchain
 langchain-google-genai
 langchain-community
+langchain-text-splitters
 
 # Vector Store (CPU version)
 faiss-cpu
